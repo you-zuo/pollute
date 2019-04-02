@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:amap_location/amap_location.dart';
 import 'package:dio/dio.dart';
 import 'data/contaminated.dart';
+import 'package:simple_permissions/simple_permissions.dart';
+import 'package:easy_alert/easy_alert.dart';
 
 void main() {
   AMapLocationClient.setApiKey("135fbf948462805a522c058a4fd9478e");
@@ -23,33 +25,46 @@ class _HomeScreen extends StatefulWidget {
 }
 
 class __HomeScreenState extends State<_HomeScreen> {
-   var latitude;
-   var longitude;
+  AMapLocation _loc;
 
-  void initState(){
-    super.initState();
-    AMapLocationClient.onLocationUpate.listen((AMapLocation loc){
-      if(!mounted)return;
-      setState(() {
-        latitude=loc.latitude;
-        longitude=loc.longitude;
-      });
+  void _checkPersmission() async {
+    bool hasPermission =
+    await SimplePermissions.checkPermission(Permission.WhenInUseLocation);
+    if (!hasPermission) {
+      PermissionStatus requestPermissionResult =
+      await SimplePermissions.requestPermission(
+          Permission.WhenInUseLocation);
+      if (requestPermissionResult != PermissionStatus.authorized) {
+        Alert.alert(context, title: "申请定位权限失败");
+        return;
+      }
+    }
+    AMapLocation loc = await AMapLocationClient.getLocation(true);
+    setState(() {
+      _loc = loc;
     });
-    AMapLocationClient.startLocation();
   }
-   @override
-   void dispose() {
-     //注意这里停止监听
-     AMapLocationClient.stopLocation();
-     super.dispose();
-   }
+
+  void initState() {
+    super.initState();
+    AMapLocationClient.startup(new AMapLocationOption(
+        desiredAccuracy: CLLocationAccuracy.kCLLocationAccuracyHundredMeters));
+    _checkPersmission();
+  }
+
+  @override
+  void dispose() {
+    //注意这里停止监听
+    AMapLocationClient.shutdown();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: FlatButton(
         onPressed: () {
-          getLocation();
+          _checkPersmission();
         },
         child: Text(""),
         color: Colors.pinkAccent,
@@ -60,7 +75,6 @@ class __HomeScreenState extends State<_HomeScreen> {
 
 List<Value> one;
 
-//卡片轮播接口
 getHttp() async {
   final response = await Dio()
       .get("http://aider.meizu.com/app/weather/listWeather?cityIds=101240101");
@@ -74,11 +88,3 @@ getHttp() async {
   }
 }
 
-setMap() async {
-  await AMapLocationClient.startup(new AMapLocationOption(
-      desiredAccuracy: CLLocationAccuracy.kCLLocationAccuracyHundredMeters));
-}
-
-getLocation() async{
-  await AMapLocationClient.getLocation(true);
-}
