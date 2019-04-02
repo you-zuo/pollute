@@ -42,6 +42,7 @@ class __HomeScreenState extends State<_HomeScreen> {
     AMapLocation loc = await AMapLocationClient.getLocation(true);
     setState(() {
       _loc = loc;
+      print(_loc.city);
     });
   }
 
